@@ -4,10 +4,14 @@ import { orderStatus, type OrderStatus, type Permission } from "@/lib/types";
 
 // Allowed moves for a dish and who may make them. Served dishes are final.
 const MOVES: Record<string, Permission> = {
-  "waiting>ready": "kitchen.view",
-  "ready>waiting": "kitchen.view",
+  "waiting>cooking": "kitchen.view", // started cooking
+  "cooking>ready": "kitchen.view",
+  "waiting>ready": "kitchen.view", // quick dishes can skip "cooking"
+  "cooking>waiting": "kitchen.view", // undo
+  "ready>cooking": "kitchen.view", // undo
   "ready>served": "order.serve",
   "waiting>cancelled": "order.cancel",
+  "cooking>cancelled": "order.cancel",
   "ready>cancelled": "order.cancel",
 };
 
@@ -33,6 +37,7 @@ export const PATCH = handle(async (req: Request, ctx: RouteContext<"/api/orders/
     const now = Date.now();
     for (const l of movable) {
       l.status = status;
+      if (status === "cooking") l.cookingAt ??= now;
       if (status === "ready") l.readyAt = now;
       if (status === "served") l.servedAt = now;
     }

@@ -7,6 +7,7 @@ import {
   Check,
   CheckCheck,
   ChefHat,
+  Flame,
   Plus,
   Receipt,
   ShoppingBag,
@@ -33,7 +34,7 @@ import {
 } from "@/lib/types";
 import { minsSince } from "@/lib/client";
 
-const LINE_LIGHT = { waiting: "waiting", ready: "ready", served: "served", cancelled: "free" } as const;
+const LINE_LIGHT = { waiting: "waiting", cooking: "cooking", ready: "ready", served: "served", cancelled: "free" } as const;
 
 /** Orders for one dine-in table (all its customers) or one takeaway parcel. */
 export function TableSheet({
@@ -330,7 +331,7 @@ function LineRow({
 }) {
   const { can } = useLive();
   const cancelled = l.status === "cancelled";
-  const canCancel = (l.status === "waiting" || l.status === "ready") && can("order.cancel");
+  const canCancel = ["waiting", "cooking", "ready"].includes(l.status) && can("order.cancel");
 
   return (
     <li className="flex items-center gap-2 py-2 pr-2">
@@ -346,7 +347,12 @@ function LineRow({
         </Btn>
       )}
       {l.status === "waiting" && can("kitchen.view") && (
-        <Btn tone="amber" size="sm" onClick={() => onSet("ready")} aria-label={`${l.name} ready`}>
+        <Btn tone="amber" size="sm" onClick={() => onSet("cooking")} aria-label={`Start cooking ${l.name}`}>
+          <Flame className="size-5" />
+        </Btn>
+      )}
+      {l.status === "cooking" && can("kitchen.view") && (
+        <Btn tone="green" size="sm" onClick={() => onSet("ready")} aria-label={`${l.name} ready`}>
           <ChefHat className="size-5" />
         </Btn>
       )}

@@ -25,16 +25,17 @@ The first admin (`ADMIN_EMAIL`, default `abielanabielan@gmail.com`) is created o
 | --- | --- |
 | White, dashed border | Free |
 | Grey | Seated, nothing ordered yet |
-| Amber | A dish is waiting in the kitchen (the badge shows minutes; red after 15) |
+| Amber | A dish is ordered, not started yet (the badge shows minutes; red after 15) |
+| Orange | A dish is cooking |
 | Green, pulsing | A dish is ready to serve |
 | Blue | Everything served |
 
 Every dish on an order has its own status.
 
 1. **Waiter** taps a table → **Order** → taps dishes → **Send**.
-2. **Kitchen** taps a single dish when it's ready, or **All ready** for the whole ticket. Waiters' screens chime and the table pulses green.
+2. **Kitchen** taps **Start** on a dish when it goes on the stove (orange), then **Ready** when it's done. The ticket's two **All** buttons start or finish every dish at once, and ↶ steps a dish back one stage. Quick dishes can go straight to ready. When a dish is ready, waiters' screens chime and the table pulses green.
 3. **Waiter** taps ✓ next to each ready dish to mark it served.
-4. **Cancel** (✕) works only before a dish is served. Served or billed dishes can't be cancelled.
+4. **Cancel** (✕) works any time before a dish is served, even while it's cooking. Served or billed dishes can't be cancelled.
 5. When every dish is served or cancelled, **Bill** sends the guest to the cashier and **frees the table straight away** for new diners. Billed orders can't be changed.
 6. **Cashier** opens **Bills** → prints → **Paid**. Payment is only possible from a bill.
 
@@ -44,7 +45,7 @@ Every dish on an order has its own status.
 
 Every action that can't be undone (cancel a dish, remove a guest, bill, paid, admin delete) asks first with large **Yes / No** buttons.
 
-**Split table:** in a table, the dashed `+` button adds another customer (B, C…). Each customer has their own orders and bill, and the table tile shows one colour stripe per customer.
+**Split table:** in a table, the dashed `+` button adds another customer (B, C…). Each customer has their own orders and bill, and the table tile shows one coloured square per customer: A and B on top, C and D below, then E over F in a new column, and so on. A customer alone at the end of a pair stretches to fill the gap.
 
 ## Roles (editable under Admin → Roles)
 

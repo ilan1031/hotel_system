@@ -9,7 +9,7 @@ import { MenuPicker, type PickTarget } from "@/components/menu-picker";
 import { guestLight, isTakeaway, LIGHT_META, type Guest, type Light, type LiveState, type Table } from "@/lib/types";
 import { minsSince, useNow } from "@/lib/client";
 
-const LEGEND: Light[] = ["free", "seated", "waiting", "ready", "served"];
+const LEGEND: Light[] = ["free", "seated", "waiting", "cooking", "ready", "served"];
 
 export default function FloorPage() {
   const { state: all, can } = useLive();
@@ -153,10 +153,28 @@ function ParcelChip({ guest, state, onOpen }: { guest: Guest; state: LiveState; 
   );
 }
 
+// Customers on a split table fill squares: A B on top, C D below, then E over F in a new column, and so on.
+// A customer alone at the end of a pair stretches to fill the gap (C under A+B, E down the whole column).
+function guestGrid(n: number): React.CSSProperties {
+  const cols = n <= 2 ? n : n <= 4 ? 2 : 2 + Math.ceil((n - 4) / 2);
+  return { gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${n <= 2 ? 1 : 2}, 1fr)` };
+}
+
+function guestCell(i: number, n: number): React.CSSProperties {
+  if (n <= 2) return { gridRow: "1", gridColumn: `${i + 1}` };
+  if (i < 4) {
+    const stretch = n === 3 && i === 2;
+    return { gridRow: `${Math.floor(i / 2) + 1}`, gridColumn: stretch ? "1 / span 2" : `${(i % 2) + 1}` };
+  }
+  const k = i - 4;
+  const stretch = k % 2 === 0 && i === n - 1;
+  return { gridRow: stretch ? "1 / span 2" : `${(k % 2) + 1}`, gridColumn: `${3 + Math.floor(k / 2)}` };
+}
+
 function TableTile({ table, state, index, onOpen }: { table: Table; state: LiveState; index: number; onOpen: () => void }) {
   const guests = state.guests.filter((g) => g.tableId === table.id).sort((a, b) => a.label.localeCompare(b.label));
   const lights = guests.map((g) => guestLight(g, state.orders));
-  const waiting = state.orders.filter((o) => o.tableId === table.id && o.status === "waiting");
+  const waiting = state.orders.filter((o) => o.tableId === table.id && (o.status === "waiting" || o.status === "cooking"));
   const oldest = waiting.length ? Math.min(...waiting.map((o) => o.createdAt)) : 0;
   const mins = oldest ? minsSince(oldest) : 0;
   const free = guests.length === 0;
@@ -177,19 +195,18 @@ function TableTile({ table, state, index, onOpen }: { table: Table; state: LiveS
       } ${hasReady ? "pulse-ready" : ""}`}
     >
       {!free && (
-        <div className="absolute inset-0 flex">
+        <div className="absolute inset-0 grid gap-0.5 bg-white/80" style={guestGrid(lights.length)}>
           {lights.map((l, i) => (
             <motion.div
               key={guests[i].id}
               layout
-              className={`relative flex-1 ${LIGHT_META[l].bg} ${i ? "border-l-2 border-white/70" : ""}`}
+              className={`relative ${LIGHT_META[l].bg}`}
+              style={guestCell(i, lights.length)}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
               {lights.length > 1 && (
-                <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-xs font-bold text-white/90">
-                  {guests[i].label}
-                </span>
+                <span className="absolute bottom-1 left-1.5 text-xs font-bold text-white/90 drop-shadow">{guests[i].label}</span>
               )}
             </motion.div>
           ))}

@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, CheckCheck, ChefHat, Clock, Flame, Loader2, ShoppingBag, Undo2 } from "lucide-react";
 import { useLive } from "@/components/live";
 import { minsSince, useNow } from "@/lib/client";
-import { isTakeaway, type LiveState, type Order } from "@/lib/types";
+import { isTakeaway, type LiveState, type Order, type OrderLine } from "@/lib/types";
 
 export default function KitchenPage() {
   const { state } = useLive();
@@ -16,13 +16,22 @@ export default function KitchenPage() {
 
   const has = (o: Order, st: string) => o.lines.some((l) => l.status === st);
   const firstReady = (o: Order) => Math.min(...o.lines.filter((l) => l.status === "ready").map((l) => l.readyAt ?? 0));
-  const waiting = state.orders.filter((o) => has(o, "waiting")).sort((a, b) => a.createdAt - b.createdAt);
+  // tickets with any dish not yet started or still on the stove
+  const waiting = state.orders
+    .filter((o) => has(o, "waiting") || has(o, "cooking"))
+    .sort((a, b) => a.createdAt - b.createdAt);
   const ready = state.orders.filter((o) => has(o, "ready")).sort((a, b) => firstReady(a) - firstReady(b));
 
-  // total quantity per dish still to cook
-  const toCook = new Map<string, number>();
+  // per dish: how many still to start, and how many on the stove
+  const toCook = new Map<string, { wait: number; cook: number }>();
   waiting.forEach((o) =>
-    o.lines.forEach((l) => l.status === "waiting" && toCook.set(l.name, (toCook.get(l.name) ?? 0) + l.qty)),
+    o.lines.forEach((l) => {
+      if (l.status !== "waiting" && l.status !== "cooking") return;
+      const t = toCook.get(l.name) ?? { wait: 0, cook: 0 };
+      if (l.status === "waiting") t.wait += l.qty;
+      else t.cook += l.qty;
+      toCook.set(l.name, t);
+    }),
   );
 
   return (
@@ -39,7 +48,7 @@ export default function KitchenPage() {
               {tab === t && (
                 <motion.span
                   layoutId="k-tab"
-                  className={`absolute inset-0 rounded-full ${t === "waiting" ? "bg-amber-500" : "bg-emerald-600"}`}
+                  className={`absolute inset-0 rounded-full ${t === "waiting" ? "bg-orange-600" : "bg-emerald-600"}`}
                 />
               )}
               <span className="relative">{t === "waiting" ? <Flame className="size-4" /> : <Check className="size-4" />}</span>
@@ -51,18 +60,29 @@ export default function KitchenPage() {
 
       {toCook.size > 0 && (
         <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto pb-1">
-          {[...toCook].sort((a, b) => b[1] - a[1]).map(([name, qty]) => (
-            <span key={name} className="flex shrink-0 items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-sm shadow-sm ring-1 ring-amber-200">
-              <b className="text-amber-700 tabular-nums">{qty}</b>
-              {name}
-            </span>
-          ))}
+          {[...toCook]
+            .sort((a, b) => b[1].wait + b[1].cook - (a[1].wait + a[1].cook))
+            .map(([name, { wait, cook }]) => (
+              <span
+                key={name}
+                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-sm shadow-sm ring-1 ring-amber-200"
+              >
+                {wait > 0 && <b className="text-amber-700 tabular-nums">{wait}</b>}
+                {cook > 0 && (
+                  <b className="flex items-center gap-0.5 text-orange-600 tabular-nums">
+                    <Flame className="size-3.5" />
+                    {cook}
+                  </b>
+                )}
+                {name}
+              </span>
+            ))}
         </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <section className={tab === "waiting" ? "" : "hidden lg:block"}>
-          <h2 className="mb-2 hidden items-center gap-2 font-bold text-amber-700 lg:flex">
+          <h2 className="mb-2 hidden items-center gap-2 font-bold text-orange-700 lg:flex">
             <Flame className="size-5" /> {waiting.length}
           </h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -110,12 +130,17 @@ function Ticket({ order: o, state, mode }: { order: Order; state: LiveState; mod
   const split = !parcel && state.guests.filter((g) => g.tableId === o.tableId && g.status === "open").length > 1;
   const mins = minsSince(o.createdAt);
   const isReady = mode === "ready";
-  const late = !isReady && mins >= 15;
-  const head = isReady ? "bg-emerald-600" : late ? "bg-rose-700" : "bg-amber-500";
-  const set = (status: string, lineIds?: string[]) => act(`/api/orders/${o.id}`, "PATCH", { status, lineIds });
-  // cooking tickets list dishes still on the stove plus ones already done; ready tickets list plates to pick up
-  const lines = o.lines.filter((l) => (isReady ? l.status === "ready" : l.status === "waiting" || l.status === "ready"));
-  const left = lines.filter((l) => l.status === "waiting").length;
+  const set = (status: string, lineIds: string[]) => {
+    if (lineIds.length) act(`/api/orders/${o.id}`, "PATCH", { status, lineIds });
+  };
+  // kitchen tickets list dishes to start, on the stove and already done; ready tickets list plates to pick up
+  const lines = o.lines.filter((l) =>
+    isReady ? l.status === "ready" : l.status === "waiting" || l.status === "cooking" || l.status === "ready",
+  );
+  const toStart = lines.filter((l) => l.status === "waiting").map((l) => l.id);
+  const notReady = lines.filter((l) => l.status === "waiting" || l.status === "cooking").map((l) => l.id);
+  const cooking = lines.some((l) => l.status === "cooking");
+  const head = isReady ? "bg-emerald-600" : mins >= 15 ? "bg-rose-700" : cooking ? "bg-orange-600" : "bg-amber-500";
 
   return (
     <motion.article
@@ -126,7 +151,7 @@ function Ticket({ order: o, state, mode }: { order: Order; state: LiveState; mod
       transition={{ type: "spring", stiffness: 300, damping: 28 }}
       className="overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-stone-200"
     >
-      <div className={`flex items-center gap-2 px-4 py-2 text-white ${head}`}>
+      <div className={`flex items-center gap-2 px-4 py-2 text-white transition-colors ${head}`}>
         {parcel && <ShoppingBag className="size-6" aria-label="Takeaway" />}
         <span className="font-display text-2xl font-extrabold">{parcel ? guest?.label : table?.name}</span>
         {split && <span className="rounded-md bg-white/25 px-1.5 text-sm font-bold">{guest?.label}</span>}
@@ -136,44 +161,105 @@ function Ticket({ order: o, state, mode }: { order: Order; state: LiveState; mod
           {mins}m
         </span>
       </div>
-      <ul className={isReady ? "px-2 py-1" : "px-2 py-2"}>
-        {lines.map((l) => {
-          const done = l.status === "ready";
-          return (
+
+      {isReady ? (
+        <ul className="px-2 py-1">
+          {lines.map((l) => (
             <li key={l.id}>
               <button
-                onClick={() => set(done ? "waiting" : "ready", [l.id])}
-                aria-label={done ? `${l.name}: back to cooking` : `${l.name} ready`}
-                className={`flex w-full items-start gap-2 rounded-xl px-2 text-left transition active:scale-[0.98] ${
-                  isReady ? "py-1 text-sm" : "py-1.5 text-lg hover:bg-emerald-50"
-                }`}
+                onClick={() => set("cooking", [l.id])}
+                aria-label={`${l.name}: back to cooking`}
+                className="flex w-full items-start gap-2 rounded-xl px-2 py-1 text-left text-sm active:scale-[0.98]"
               >
-                <span
-                  className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md ${
-                    done ? "bg-emerald-600 text-white" : "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
-                  }`}
-                >
-                  {done ? <Check className="size-4" /> : null}
+                <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-white">
+                  <Check className="size-4" />
                 </span>
-                <span className={`min-w-0 flex-1 leading-snug ${done && !isReady ? "text-stone-400 line-through" : ""}`}>
+                <span className="min-w-0 flex-1 leading-snug">
                   <b className="mr-1.5 tabular-nums">{l.qty}×</b>
                   {l.name}
-                  {l.note && <span className="block text-sm text-rose-700 italic">{l.note}</span>}
                 </span>
-                {isReady && <Undo2 className="mt-0.5 size-4 shrink-0 text-stone-300" />}
+                <Undo2 className="mt-0.5 size-4 shrink-0 text-stone-300" />
               </button>
             </li>
-          );
-        })}
-      </ul>
-      {!isReady && left > 1 && (
-        <button
-          onClick={() => set("ready")}
-          className="flex h-12 w-full items-center justify-center gap-2 border-t border-stone-100 bg-emerald-50 font-bold text-emerald-700 transition hover:bg-emerald-600 hover:text-white active:bg-emerald-700 active:text-white"
-        >
-          <CheckCheck className="size-5" /> All ready
-        </button>
+          ))}
+        </ul>
+      ) : (
+        <ul className="divide-y divide-stone-100 px-2 py-1">
+          {lines.map((l) => (
+            <KitchenLine
+              key={l.id}
+              line={l}
+              onNext={() => set(l.status === "waiting" ? "cooking" : "ready", [l.id])}
+              onBack={() => set(l.status === "cooking" ? "waiting" : "cooking", [l.id])}
+            />
+          ))}
+        </ul>
+      )}
+
+      {!isReady && (toStart.length > 1 || notReady.length > 1) && (
+        <div className="grid grid-cols-2 border-t border-stone-100">
+          <button
+            disabled={toStart.length < 2}
+            onClick={() => set("cooking", toStart)}
+            aria-label="Start cooking all"
+            className="flex h-12 items-center justify-center gap-2 bg-orange-50 font-bold text-orange-700 transition hover:bg-orange-600 hover:text-white disabled:opacity-30"
+          >
+            <Flame className="size-5" /> All
+          </button>
+          <button
+            disabled={notReady.length < 2}
+            onClick={() => set("ready", notReady)}
+            aria-label="All ready"
+            className="flex h-12 items-center justify-center gap-2 border-l border-stone-100 bg-emerald-50 font-bold text-emerald-700 transition hover:bg-emerald-600 hover:text-white disabled:opacity-30"
+          >
+            <CheckCheck className="size-5" /> All
+          </button>
+        </div>
       )}
     </motion.article>
+  );
+}
+
+/** One dish: ordered → (Start) → cooking → (Ready) → ready. The small ↶ steps back one stage. */
+function KitchenLine({ line: l, onNext, onBack }: { line: OrderLine; onNext: () => void; onBack: () => void }) {
+  const done = l.status === "ready";
+  const cooking = l.status === "cooking";
+  return (
+    <li className="flex items-center gap-2 py-1.5">
+      <span
+        className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${
+          done ? "bg-emerald-600 text-white" : cooking ? "bg-orange-600 text-white" : "bg-amber-100 ring-1 ring-amber-300"
+        }`}
+      >
+        {done ? <Check className="size-4" /> : cooking ? <Flame className="size-4 animate-pulse" /> : null}
+      </span>
+      <span className={`min-w-0 flex-1 text-lg leading-snug ${done ? "text-stone-400 line-through" : ""}`}>
+        <b className="mr-1.5 tabular-nums">{l.qty}×</b>
+        {l.name}
+        {l.note && <span className="block text-sm text-rose-700 italic">{l.note}</span>}
+      </span>
+      {l.status !== "waiting" && (
+        <button
+          onClick={onBack}
+          className="rounded-full p-1.5 text-stone-300 hover:bg-stone-100 hover:text-stone-500"
+          aria-label={`${l.name}: step back`}
+        >
+          <Undo2 className="size-4" />
+        </button>
+      )}
+      {!done && (
+        <motion.button
+          whileTap={{ scale: 0.92 }}
+          onClick={onNext}
+          aria-label={cooking ? `${l.name} ready` : `Start cooking ${l.name}`}
+          className={`flex h-11 min-w-24 items-center justify-center gap-1.5 rounded-xl px-3 font-bold text-white shadow-sm ${
+            cooking ? "bg-emerald-600" : "bg-orange-600"
+          }`}
+        >
+          {cooking ? <Check className="size-5" /> : <Flame className="size-5" />}
+          {cooking ? "Ready" : "Start"}
+        </motion.button>
+      )}
+    </li>
   );
 }
