@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, CheckCheck, ChefHat, Clock, Flame, Loader2, ShoppingBag, Undo2 } from "lucide-react";
+import { Check, CheckCheck, ChefHat, Clock, Flame, Loader2, ShoppingBag, Undo2, X } from "lucide-react";
 import { useLive } from "@/components/live";
+import { OrderHistory } from "@/components/history";
 import { minsSince, useNow } from "@/lib/client";
 import { isTakeaway, type LiveState, type Order, type OrderLine } from "@/lib/types";
 
 export default function KitchenPage() {
-  const { state } = useLive();
+  const { state, act } = useLive();
   const [tab, setTab] = useState<"waiting" | "ready">("waiting");
+  const [dish, setDish] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   useNow(15000);
 
   if (!state) return <Loader2 className="mx-auto mt-24 size-8 animate-spin text-maroon" />;
@@ -33,6 +36,23 @@ export default function KitchenPage() {
       toCook.set(l.name, t);
     }),
   );
+
+  // tapping a dish chip shows only tickets that still need that dish, with batch Start / Ready
+  const focus = dish && toCook.has(dish) ? dish : null;
+  const shown = focus
+    ? waiting.filter((o) => o.lines.some((l) => l.name === focus && (l.status === "waiting" || l.status === "cooking")))
+    : waiting;
+  const focusCount = focus ? toCook.get(focus)! : null;
+
+  async function batch(status: "cooking" | "ready") {
+    const from = status === "cooking" ? ["waiting"] : ["waiting", "cooking"];
+    setBusy(true);
+    for (const o of shown) {
+      const lineIds = o.lines.filter((l) => l.name === focus && from.includes(l.status)).map((l) => l.id);
+      if (lineIds.length) await act(`/api/orders/${o.id}`, "PATCH", { status, lineIds });
+    }
+    setBusy(false);
+  }
 
   return (
     <>
@@ -59,36 +79,83 @@ export default function KitchenPage() {
       </header>
 
       {toCook.size > 0 && (
-        <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto pb-1">
+        <div className="no-scrollbar mb-3 flex gap-2 overflow-x-auto pb-1">
+          {focus && (
+            <button
+              onClick={() => setDish(null)}
+              className="flex shrink-0 items-center gap-1 rounded-xl bg-ink px-3 py-1.5 text-sm font-semibold text-white"
+              aria-label="Show all dishes"
+            >
+              <X className="size-4" /> All
+            </button>
+          )}
           {[...toCook]
             .sort((a, b) => b[1].wait + b[1].cook - (a[1].wait + a[1].cook))
-            .map(([name, { wait, cook }]) => (
-              <span
-                key={name}
-                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-sm shadow-sm ring-1 ring-amber-200"
-              >
-                {wait > 0 && <b className="text-amber-700 tabular-nums">{wait}</b>}
-                {cook > 0 && (
-                  <b className="flex items-center gap-0.5 text-orange-600 tabular-nums">
-                    <Flame className="size-3.5" />
-                    {cook}
-                  </b>
-                )}
-                {name}
-              </span>
-            ))}
+            .map(([name, { wait, cook }]) => {
+              const on = name === focus;
+              return (
+                <motion.button
+                  key={name}
+                  layout
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setDish(on ? null : name)}
+                  aria-pressed={on}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm shadow-sm transition ${
+                    on ? "bg-maroon text-white ring-2 ring-maroon" : "bg-white ring-1 ring-amber-200 hover:ring-maroon"
+                  }`}
+                >
+                  {wait > 0 && <b className={`tabular-nums ${on ? "" : "text-amber-700"}`}>{wait}</b>}
+                  {cook > 0 && (
+                    <b className={`flex items-center gap-0.5 tabular-nums ${on ? "" : "text-orange-600"}`}>
+                      <Flame className="size-3.5" />
+                      {cook}
+                    </b>
+                  )}
+                  {name}
+                </motion.button>
+              );
+            })}
         </div>
       )}
+
+      <AnimatePresence>
+        {focus && focusCount && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl bg-white p-2 pl-4 shadow-sm ring-1 ring-stone-200"
+          >
+            <span className="mr-auto font-bold">{focus}</span>
+            <button
+              disabled={busy || !focusCount.wait}
+              onClick={() => batch("cooking")}
+              className="flex h-11 items-center gap-1.5 rounded-xl bg-orange-600 px-4 font-bold text-white disabled:opacity-30"
+              aria-label={`Start cooking all ${focus}`}
+            >
+              <Flame className="size-5" /> Start {focusCount.wait || ""}
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => batch("ready")}
+              className="flex h-11 items-center gap-1.5 rounded-xl bg-emerald-600 px-4 font-bold text-white disabled:opacity-30"
+              aria-label={`All ${focus} ready`}
+            >
+              <Check className="size-5" /> Ready {focusCount.wait + focusCount.cook}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <section className={tab === "waiting" ? "" : "hidden lg:block"}>
           <h2 className="mb-2 hidden items-center gap-2 font-bold text-orange-700 lg:flex">
-            <Flame className="size-5" /> {waiting.length}
+            <Flame className="size-5" /> {shown.length}
           </h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <AnimatePresence>
-              {waiting.map((o) => (
-                <Ticket key={o.id} order={o} state={state} mode="cooking" />
+              {shown.map((o) => (
+                <Ticket key={o.id} order={o} state={state} mode="cooking" focus={focus} />
               ))}
             </AnimatePresence>
           </div>
@@ -122,7 +189,17 @@ function Empty() {
   );
 }
 
-function Ticket({ order: o, state, mode }: { order: Order; state: LiveState; mode: "cooking" | "ready" }) {
+function Ticket({
+  order: o,
+  state,
+  mode,
+  focus,
+}: {
+  order: Order;
+  state: LiveState;
+  mode: "cooking" | "ready";
+  focus?: string | null;
+}) {
   const { act } = useLive();
   const table = state.tables.find((t) => t.id === o.tableId);
   const guest = state.guests.find((g) => g.id === o.guestId);
@@ -151,7 +228,7 @@ function Ticket({ order: o, state, mode }: { order: Order; state: LiveState; mod
       transition={{ type: "spring", stiffness: 300, damping: 28 }}
       className="overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-stone-200"
     >
-      <div className={`flex items-center gap-2 px-4 py-2 text-white transition-colors ${head}`}>
+      <div className={`flex items-center gap-2 py-2 pr-2 pl-4 text-white transition-colors ${head}`}>
         {parcel && <ShoppingBag className="size-6" aria-label="Takeaway" />}
         <span className="font-display text-2xl font-extrabold">{parcel ? guest?.label : table?.name}</span>
         {split && <span className="rounded-md bg-white/25 px-1.5 text-sm font-bold">{guest?.label}</span>}
@@ -160,6 +237,7 @@ function Ticket({ order: o, state, mode }: { order: Order; state: LiveState; mod
           <Clock className="size-4" />
           {mins}m
         </span>
+        <OrderHistory order={o} light />
       </div>
 
       {isReady ? (
@@ -189,6 +267,7 @@ function Ticket({ order: o, state, mode }: { order: Order; state: LiveState; mod
             <KitchenLine
               key={l.id}
               line={l}
+              dim={!!focus && l.name !== focus}
               onNext={() => set(l.status === "waiting" ? "cooking" : "ready", [l.id])}
               onBack={() => set(l.status === "cooking" ? "waiting" : "cooking", [l.id])}
             />
@@ -221,11 +300,21 @@ function Ticket({ order: o, state, mode }: { order: Order; state: LiveState; mod
 }
 
 /** One dish: ordered → (Start) → cooking → (Ready) → ready. The small ↶ steps back one stage. */
-function KitchenLine({ line: l, onNext, onBack }: { line: OrderLine; onNext: () => void; onBack: () => void }) {
+function KitchenLine({
+  line: l,
+  dim,
+  onNext,
+  onBack,
+}: {
+  line: OrderLine;
+  dim?: boolean;
+  onNext: () => void;
+  onBack: () => void;
+}) {
   const done = l.status === "ready";
   const cooking = l.status === "cooking";
   return (
-    <li className="flex items-center gap-2 py-1.5">
+    <li className={`flex items-center gap-2 py-1.5 transition-opacity ${dim ? "opacity-35" : ""}`}>
       <span
         className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${
           done ? "bg-emerald-600 text-white" : cooking ? "bg-orange-600 text-white" : "bg-amber-100 ring-1 ring-amber-300"

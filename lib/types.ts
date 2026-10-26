@@ -51,6 +51,7 @@ export type Guest = {
   openedAt: number;
   openedBy: string;
   billedAt?: number;
+  billedBy?: string;
   closedAt?: number;
   closedBy?: string;
   total?: number;
@@ -69,6 +70,8 @@ export type OrderLine = {
   status: OrderStatus;
   cookingAt?: number;
   readyAt?: number;
+  /** every status change on this dish: who did it and when (undo steps included) */
+  log?: { s: OrderStatus; by: string; at: number }[];
   servedAt?: number;
 };
 export type Order = {

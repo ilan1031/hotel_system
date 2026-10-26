@@ -45,6 +45,10 @@ Every dish on an order has its own status.
 
 Every action that can't be undone (cancel a dish, remove a guest, bill, paid, admin delete) asks first with large **Yes / No** buttons.
 
+**Kitchen dish filter:** the chips at the top of the kitchen screen show how many of each dish are still to start (amber) and on the stove (🔥). Tap a chip to see only the tickets that need that dish. Its other dishes fade, and a bar offers **Start** / **Ready** for that dish across every ticket at once. Tap it again, or **All**, to clear the filter.
+
+**History (ⓘ):** every kitchen ticket, every ticket in a table, and every bill has an ⓘ in its top-right corner. It shows who ordered, who started, finished, served or cancelled each dish (step-backs included), and who opened, billed and took payment, all with times.
+
 **Split table:** in a table, the dashed `+` button adds another customer (B, C…). Each customer has their own orders and bill, and the table tile shows one coloured square per customer: A and B on top, C and D below, then E over F in a new column, and so on. A customer alone at the end of a pair stretches to fill the gap.
 
 ## Roles (editable under Admin → Roles)

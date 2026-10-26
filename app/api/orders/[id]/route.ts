@@ -36,6 +36,7 @@ export const PATCH = handle(async (req: Request, ctx: RouteContext<"/api/orders/
 
     const now = Date.now();
     for (const l of movable) {
+      (l.log ??= []).push({ s: status, by: me.id, at: now });
       l.status = status;
       if (status === "cooking") l.cookingAt ??= now;
       if (status === "ready") l.readyAt = now;

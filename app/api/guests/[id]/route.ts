@@ -23,6 +23,7 @@ export const PATCH = handle(async (req: Request, ctx: RouteContext<"/api/guests/
         if (lines.some((l) => l.status !== "served")) throw new HttpError(400, "Serve or cancel all dishes first");
         g.status = "bill";
         g.billedAt = Date.now();
+        g.billedBy = me.id;
         g.total = guestTotal(id, db.orders);
         break;
       // Payment happens only from a bill.

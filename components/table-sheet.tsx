@@ -20,6 +20,7 @@ import { useLive } from "./live";
 import { useConfirm } from "./confirm";
 import { Btn, Dot, Modal, Sheet } from "./ui";
 import { MenuPicker, type PickTarget } from "./menu-picker";
+import { OrderHistory } from "./history";
 import {
   guestLight,
   guestLines,
@@ -299,17 +300,19 @@ function OrderCard({ order: o }: { order: Order }) {
       }`}
     >
       <span className={`absolute inset-y-0 left-0 w-1.5 ${LIGHT_META[light].bg}`} />
-      <div className="flex items-center gap-2 pt-2.5 pr-3 text-xs text-stone-500">
+      <div className="flex items-center gap-2 pt-1.5 pr-1.5 text-xs text-stone-500">
         <Dot light={light} className="size-2.5" />#{o.no} · {minsSince(o.createdAt)}m
+        <span className="ml-auto" />
         {ready.length > 1 && can("order.serve") && (
           <button
             onClick={() => set("served", undefined, "Served")}
-            className="ml-auto flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1 font-bold text-white"
+            className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1 font-bold text-white"
             aria-label="Serve all ready dishes"
           >
             <CheckCheck className="size-4" /> {ready.length}
           </button>
         )}
+        <OrderHistory order={o} />
       </div>
       <ul className="divide-y divide-stone-100 pb-1">
         {o.lines.map((l) => (

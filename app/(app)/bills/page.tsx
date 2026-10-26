@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CalendarDays, Clock, Loader2, Printer, Receipt, ShoppingBag, Wallet } from "lucide-react";
 import { useLive } from "@/components/live";
 import { useConfirm } from "@/components/confirm";
+import { GuestHistory } from "@/components/history";
 import { Btn, Sheet } from "@/components/ui";
 import { api, minsSince } from "@/lib/client";
 import { guestPlace, guestTotal, isTakeaway, rupee, type Guest, type Order } from "@/lib/types";
@@ -108,7 +109,14 @@ export default function BillsPage() {
       <Sheet
         open={!!current}
         onClose={() => setOpen(null)}
-        title={<span className="font-display text-2xl font-extrabold text-maroon">{current?.table}</span>}
+        title={
+          current && (
+            <div className="flex items-center gap-1">
+              <span className="font-display text-2xl font-extrabold text-maroon">{current.table}</span>
+              <GuestHistory guest={current} orders={current.orders} title={current.table} />
+            </div>
+          )
+        }
         footer={
           current && (
             <div className="flex gap-2">
