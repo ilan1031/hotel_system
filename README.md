@@ -17,7 +17,7 @@ For real service, run the production server (`npm run build && npm start`). It's
 
 Don't run `npm run build` while `npm run dev` is running. Both write to `.next`, which corrupts the dev cache, and every open screen then keeps reloading itself. If that happens, stop the server, delete the `.next` folder and start again.
 
-The first admin (`ADMIN_EMAIL`, default `abielanabielan@gmail.com`) is created on first start with the password in `ADMIN_PASSWORD`. That password is never stored in the code. Change it after the first login (tap your avatar → Password). There is no sign-up: only users with *Manage users* can add people.
+The first admin (`ADMIN_EMAIL`, default `abielanabielan@gmail.com`) is created on first start with the password in `ADMIN_PASSWORD`. That password is never stored in the code. Change it after the first login (tap your avatar → Password). There is no sign-up: only users with *Manage users* can add people. This first admin is the **owner**: other admins don't see it in Admin → Users and can't edit, reset or delete it.
 
 ## Flow (colours on the table board)
 

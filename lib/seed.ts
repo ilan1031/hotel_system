@@ -1,11 +1,11 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { hashPassword } from "./password";
+import { OWNER_EMAIL } from "./owner";
 import { ALL_PERMISSIONS, type DB, type MenuItem } from "./types";
 
 // First admin, created only when the database is empty. The password comes from the
 // environment so it never lands in Git. Change it after first login (avatar → Password).
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "abielanabielan@gmail.com";
 
 function adminPassword() {
   const pw = process.env.ADMIN_PASSWORD;
@@ -107,7 +107,7 @@ export function seed(): DB {
       {
         id: "u-admin",
         name: "Abielan",
-        email: ADMIN_EMAIL,
+        email: OWNER_EMAIL,
         passwordHash: hashPassword(adminPassword()),
         roleId: "admin",
         active: true,
