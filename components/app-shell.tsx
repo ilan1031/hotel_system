@@ -10,6 +10,7 @@ import { api } from "@/lib/client";
 import type { Me, Permission } from "@/lib/types";
 import { LiveProvider } from "@/components/live";
 import { Btn, Field, inputCls, Modal } from "@/components/ui";
+import { BuiltBy } from "@/components/brand";
 
 const NAV: { href: string; label: string; icon: typeof LayoutGrid; perms: Permission[] }[] = [
   { href: "/", label: "Tables", icon: LayoutGrid, perms: ["floor.view"] },
@@ -72,6 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="mx-auto max-w-[1600px] px-3 pt-3 pb-28 sm:px-5 md:pb-8">
           <Suspense fallback={<Loader2 className="mx-auto mt-24 size-8 animate-spin text-maroon" />}>{children}</Suspense>
+          <BuiltBy className="mt-10" />
         </main>
 
         {/* phone bottom bar */}
@@ -123,21 +125,35 @@ function UserMenu({ me, open, onClose }: { me: Me; open: boolean; onClose: () =>
   const [cur, setCur] = useState("");
   const [next, setNext] = useState("");
   const [msg, setMsg] = useState("");
+  const [done, setDone] = useState(false);
+
+  // back to the plain menu, typed passwords cleared
+  function reset() {
+    setPw(false);
+    setCur("");
+    setNext("");
+    setMsg("");
+  }
+
+  function close() {
+    reset();
+    setDone(false);
+    onClose();
+  }
 
   async function changePw(e: React.FormEvent) {
     e.preventDefault();
     try {
       await api("/api/me", "PATCH", { current: cur, next });
-      setMsg("Saved");
-      setCur("");
-      setNext("");
+      reset();
+      setDone(true);
     } catch (err) {
       setMsg((err as Error).message);
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={me.name}>
+    <Modal open={open} onClose={close} title={me.name}>
       <div className="mb-4 flex items-center gap-3">
         <Avatar me={me} />
         <div className="min-w-0">
@@ -155,12 +171,24 @@ function UserMenu({ me, open, onClose }: { me: Me; open: boolean; onClose: () =>
           <Field label="New password">
             <input type="password" className={inputCls} value={next} onChange={(e) => setNext(e.target.value)} required minLength={6} />
           </Field>
-          {msg && <p className="mb-2 text-sm text-stone-600">{msg}</p>}
-          <Btn className="w-full">Save</Btn>
+          {msg && <p className="mb-2 text-sm text-rose-700">{msg}</p>}
+          <div className="grid grid-cols-2 gap-2">
+            <Btn type="button" tone="ghost" onClick={reset}>
+              Cancel
+            </Btn>
+            <Btn>Save</Btn>
+          </div>
         </form>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          <Btn tone="ghost" onClick={() => setPw(true)}>
+          {done && <p className="col-span-2 mb-1 text-sm font-semibold text-emerald-700">Password changed</p>}
+          <Btn
+            tone="ghost"
+            onClick={() => {
+              setDone(false);
+              setPw(true);
+            }}
+          >
             <KeyRound className="size-4" /> Password
           </Btn>
           <Btn

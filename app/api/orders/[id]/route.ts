@@ -1,5 +1,6 @@
 import { write } from "@/lib/db";
 import { can, handle, HttpError, requireUser } from "@/lib/auth";
+import { currentDevice } from "@/lib/audit";
 import { orderStatus, type OrderStatus, type Permission } from "@/lib/types";
 
 // Allowed moves for a dish and who may make them. Served dishes are final.
@@ -18,6 +19,7 @@ const MOVES: Record<string, Permission> = {
 // Body: { status, lineIds? } — without lineIds, every dish on the ticket that can make the move does.
 export const PATCH = handle(async (req: Request, ctx: RouteContext<"/api/orders/[id]">) => {
   const me = await requireUser();
+  const on = await currentDevice();
   const { id } = await ctx.params;
   const { status, lineIds } = (await req.json()) as { status: OrderStatus; lineIds?: string[] };
   return write((db) => {
@@ -36,7 +38,7 @@ export const PATCH = handle(async (req: Request, ctx: RouteContext<"/api/orders/
 
     const now = Date.now();
     for (const l of movable) {
-      (l.log ??= []).push({ s: status, by: me.id, at: now });
+      (l.log ??= []).push({ s: status, by: me.id, at: now, ...(on && { d: on }) });
       l.status = status;
       if (status === "cooking") l.cookingAt ??= now;
       if (status === "ready") l.readyAt = now;

@@ -32,9 +32,9 @@ try {
     process.exit(1);
   }
 
-  const { version, guests, orders, ...meta } = db;
+  const { version, guests, orders, logins = [], ...meta } = db;
   await client.query("BEGIN");
-  await client.query("TRUNCATE pv_meta, pv_guests, pv_orders");
+  await client.query("TRUNCATE pv_meta, pv_guests, pv_orders, pv_logins");
   await client.query("INSERT INTO pv_meta (id, version, data) VALUES (1, $1, $2::jsonb)", [version ?? 1, JSON.stringify(meta)]);
   for (const g of guests) {
     await client.query("INSERT INTO pv_guests (id, status, closed_at, data) VALUES ($1, $2, $3, $4::jsonb)", [
@@ -46,6 +46,9 @@ try {
   }
   for (const o of orders) {
     await client.query("INSERT INTO pv_orders (id, guest_id, data) VALUES ($1, $2, $3::jsonb)", [o.id, o.guestId, JSON.stringify(o)]);
+  }
+  for (const e of logins) {
+    await client.query("INSERT INTO pv_logins (id, at, data) VALUES ($1, $2, $3::jsonb)", [e.id, e.at, JSON.stringify(e)]);
   }
   await client.query("COMMIT");
   console.log(

@@ -1,14 +1,16 @@
 import { readClosed, readMeta } from "@/lib/db";
 import { handle, requireUser } from "@/lib/auth";
+import { stripDevices } from "@/lib/audit";
 import { dayRange, today } from "@/lib/time";
 import { guestPlace } from "@/lib/types";
 
 // Settled bills for a restaurant-local day (default today) — for the cashier.
 export const GET = handle(async (req: Request) => {
-  await requireUser("bill.settle");
+  const me = await requireUser("bill.settle");
   const day = new URL(req.url).searchParams.get("day");
   const { from, to } = dayRange(day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : today());
-  const [{ tables }, closed] = await Promise.all([readMeta(), readClosed(from, to)]);
+  const [{ tables }, raw] = await Promise.all([readMeta(), readClosed(from, to)]);
+  const closed = stripDevices(me, raw.guests, raw.orders);
   const bills = closed.guests
     .filter((g) => !g.left)
     .sort((a, b) => b.closedAt! - a.closedAt!)

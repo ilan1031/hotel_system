@@ -17,7 +17,7 @@ For real service, run the production server (`npm run build && npm start`). It's
 
 Don't run `npm run build` while `npm run dev` is running. Both write to `.next`, which corrupts the dev cache, and every open screen then keeps reloading itself. If that happens, stop the server, delete the `.next` folder and start again.
 
-The first admin (`ADMIN_EMAIL`, default `abielanabielan@gmail.com`) is created on first start with the password in `ADMIN_PASSWORD`. That password is never stored in the code. Change it after the first login (tap your avatar → Password). There is no sign-up: only users with *Manage users* can add people.
+The first admin (`ADMIN_EMAIL`, default `abielanabielan@gmail.com`) is created on first start with the password in `ADMIN_PASSWORD`. That password is never stored in the code. Change it after the first login (tap your avatar → Password). There is no sign-up: only users with *Manage users* can add people. This first admin is the **owner**: other admins don't see it in Admin → Users and can't edit, reset or delete it.
 
 ## Flow (colours on the table board)
 
@@ -48,6 +48,8 @@ Every action that can't be undone (cancel a dish, remove a guest, bill, paid, ad
 **Kitchen dish filter:** the chips at the top of the kitchen screen show how many of each dish are still to start (amber) and on the stove (🔥). Tap a chip to see only the tickets that need that dish. Its other dishes fade, and a bar offers **Start** / **Ready** for that dish across every ticket at once. Tap it again, or **All**, to clear the filter.
 
 **History (ⓘ):** every kitchen ticket, every ticket in a table, and every bill has an ⓘ in its top-right corner. It shows who ordered, who started, finished, served or cancelled each dish (step-backs included), and who opened, billed and took payment, all with times.
+
+**Devices & login audit:** every phone or PC reports its model (on Android Chrome), OS and browser. Browsers never reveal a computer's real name, so staff can give a device a name (tap ✎ under the login form, e.g. "Kitchen tablet"). Actions in the ⓘ history show which device they were done on, but only to the owner and the Admin role; the server strips device details for everyone else. The owner also gets **Admin → Logins**: every sign-in attempt for a day, failed ones included, with device, IP and approximate location (city, region and country from Vercel's IP lookup, with a map link). Locations only appear on the hosted site, not when running locally.
 
 **Split table:** in a table, the dashed `+` button adds another customer (B, C…). Each customer has their own orders and bill, and the table tile shows one coloured square per customer: A and B on top, C and D below, then E over F in a new column, and so on. A customer alone at the end of a pair stretches to fill the gap.
 

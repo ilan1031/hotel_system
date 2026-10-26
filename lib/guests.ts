@@ -10,7 +10,7 @@ export function freeLabel(db: DB, tableId: string) {
 }
 
 /** A takeaway (parcel) customer, numbered P1, P2… per day. */
-export function addTakeaway(db: DB, by: string) {
+export function addTakeaway(db: DB, by: string, on?: string) {
   const day = today();
   if (db.parcel?.day !== day) db.parcel = { day, no: 0 };
   const guest = {
@@ -21,16 +21,17 @@ export function addTakeaway(db: DB, by: string) {
     status: "open" as const,
     openedAt: Date.now(),
     openedBy: by,
+    openedOn: on,
   };
   db.guests.push(guest);
   return guest;
 }
 
-export function addGuest(db: DB, tableId: string, by: string) {
+export function addGuest(db: DB, tableId: string, by: string, on?: string) {
   if (!db.tables.some((t) => t.id === tableId)) throw new HttpError(404, "No such table");
   const label = freeLabel(db, tableId);
   if (!label) throw new HttpError(400, "Table is full");
-  const guest = { id: uid("g"), tableId, label, status: "open" as const, openedAt: Date.now(), openedBy: by };
+  const guest = { id: uid("g"), tableId, label, status: "open" as const, openedAt: Date.now(), openedBy: by, openedOn: on };
   db.guests.push(guest);
   return guest;
 }

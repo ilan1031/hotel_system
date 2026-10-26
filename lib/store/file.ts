@@ -64,4 +64,12 @@ export const fileStore: Store = {
     const ids = new Set(guests.map((x) => x.id));
     return { guests, orders: db.orders.filter((o) => ids.has(o.guestId)) };
   },
+  async addLogin(e) {
+    const db = load();
+    db.logins = [...(db.logins ?? []), e].slice(-5000); // keep the file small
+    persist(db);
+  },
+  async readLogins(from, to) {
+    return (load().logins ?? []).filter((e) => e.at >= from && e.at < to).sort((a, b) => b.at - a.at);
+  },
 };

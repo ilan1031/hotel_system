@@ -1,6 +1,7 @@
 import { readMeta, uid, write } from "@/lib/db";
 import { handle, HttpError, requireUser } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
+import { isOwner } from "@/lib/owner";
 import { ALL_PERMISSIONS, type DB, type Me, type Permission } from "@/lib/types";
 
 type Ctx = RouteContext<"/api/admin/[entity]">;
@@ -15,7 +16,7 @@ const ENTITIES: Record<
   {
     read: Permission[];
     write: Permission;
-    list: (db: DB) => unknown[];
+    list: (db: DB, me: Me) => unknown[];
     save: (db: DB, b: Body, me: Me) => unknown;
     remove: (db: DB, id: string, me: Me) => void;
   }
@@ -86,9 +87,15 @@ const ENTITIES: Record<
   users: {
     read: ["admin.users"],
     write: "admin.users",
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    list: (db) => db.users.map(({ passwordHash, ...u }) => u),
+    // the owner account is invisible to everyone but the owner
+    list: (db, me) =>
+      db.users
+        .filter((u) => isOwner(me) || !isOwner(u))
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        .map(({ passwordHash, ...u }) => u),
     save(db, b, me) {
+      const target = db.users.find((x) => x.id === b.id);
+      if (target && isOwner(target) && !isOwner(me)) throw new HttpError(404, "User not found");
       const email = str(b.email, 120).toLowerCase();
       const name = str(b.name, 60);
       const roleId = str(b.roleId);
@@ -111,6 +118,8 @@ const ENTITIES: Record<
     },
     remove(db, id, me) {
       if (id === me.id) throw new HttpError(400, "You can't delete yourself");
+      const target = db.users.find((x) => x.id === id);
+      if (target && isOwner(target) && !isOwner(me)) throw new HttpError(404, "User not found");
       db.users = db.users.filter((u) => u.id !== id);
     },
   },
@@ -151,8 +160,8 @@ function entity(name: string) {
 
 export const GET = handle(async (_req: Request, ctx: Ctx) => {
   const e = entity((await ctx.params).entity);
-  await requireUser(...e.read);
-  return e.list(await readMeta());
+  const me = await requireUser(...e.read);
+  return e.list(await readMeta(), me);
 });
 
 export const POST = handle(async (req: Request, ctx: Ctx) => {

@@ -2,7 +2,7 @@ import "server-only";
 import { Pool, type PoolClient } from "pg";
 import { seed } from "../seed";
 import { connectionOptions, SCHEMA_SQL } from "./schema.mjs";
-import type { DB, Guest, Order } from "../types";
+import type { DB, Guest, LoginEvent, Order } from "../types";
 import type { Store } from "./types";
 
 // Postgres store (Supabase or Neon on Vercel). Writes lock the single pv_meta row, so they run one at a time
@@ -143,5 +143,19 @@ export const pgStore: Store = {
       ? (await pool().query("SELECT data FROM pv_orders WHERE guest_id = ANY($1)", [guests.map((x) => x.id)])).rows.map((r) => r.data)
       : [];
     return { guests, orders };
+  },
+
+  async addLogin(e) {
+    await ready();
+    await pool().query("INSERT INTO pv_logins (id, at, data) VALUES ($1, $2, $3::jsonb)", [e.id, e.at, JSON.stringify(e)]);
+  },
+
+  async readLogins(from, to) {
+    await ready();
+    const { rows } = await pool().query("SELECT data FROM pv_logins WHERE at >= $1 AND at < $2 ORDER BY at DESC LIMIT 1000", [
+      from,
+      to,
+    ]);
+    return rows.map((r) => r.data as LoginEvent);
   },
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { deviceHeader } from "./device";
 
 /** Re-render every `ms` so timers stay fresh between polls. */
 export function useNow(ms = 30000) {
@@ -13,9 +14,11 @@ export function useNow(ms = 30000) {
 }
 
 export async function api<T = unknown>(path: string, method = "GET", body?: unknown): Promise<T> {
+  const headers: Record<string, string> = { "x-pv-device": await deviceHeader() };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
   const res = await fetch(path, {
     method,
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
   });
