@@ -10,6 +10,7 @@ import { api } from "@/lib/client";
 import type { Me, Permission } from "@/lib/types";
 import { LiveProvider } from "@/components/live";
 import { Btn, Field, inputCls, Modal } from "@/components/ui";
+import { BuiltBy } from "@/components/brand";
 
 const NAV: { href: string; label: string; icon: typeof LayoutGrid; perms: Permission[] }[] = [
   { href: "/", label: "Tables", icon: LayoutGrid, perms: ["floor.view"] },
@@ -72,6 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="mx-auto max-w-[1600px] px-3 pt-3 pb-28 sm:px-5 md:pb-8">
           <Suspense fallback={<Loader2 className="mx-auto mt-24 size-8 animate-spin text-maroon" />}>{children}</Suspense>
+          <BuiltBy className="mt-10" />
         </main>
 
         {/* phone bottom bar */}

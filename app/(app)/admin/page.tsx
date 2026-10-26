@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutGrid, Lock, Plus, Search, Shield, Trash2, Users, UtensilsCrossed } from "lucide-react";
+import { LayoutGrid, Lock, LogIn, Plus, Search, Shield, Trash2, Users, UtensilsCrossed } from "lucide-react";
 import { useLive } from "@/components/live";
 import { useConfirm } from "@/components/confirm";
+import { LoginAudit } from "@/components/login-audit";
 import { Btn, Field, inputCls, Modal } from "@/components/ui";
 import { api } from "@/lib/client";
 import {
@@ -27,8 +28,12 @@ const TABS = [
 ] as const;
 
 export default function AdminPage() {
-  const { can } = useLive();
-  const tabs = TABS.filter((t) => can(t.perm));
+  const { can, me } = useLive();
+  // the login audit is for the owner only
+  const tabs = [
+    ...TABS.filter((t) => can(t.perm)),
+    ...(me?.owner ? [{ id: "logins", label: "Logins", icon: LogIn, perm: "admin.users" } as const] : []),
+  ];
   const [picked, setTab] = useState<string>();
   const tab = tabs.some((t) => t.id === picked) ? picked : tabs[0]?.id;
 
@@ -55,6 +60,7 @@ export default function AdminPage() {
           {tab === "menu" && <MenuAdmin />}
           {tab === "users" && <UsersAdmin />}
           {tab === "roles" && <RolesAdmin />}
+          {tab === "logins" && <LoginAudit />}
         </motion.div>
       </AnimatePresence>
     </>

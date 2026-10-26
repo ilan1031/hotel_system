@@ -50,10 +50,13 @@ export type Guest = {
   status: SessionStatus;
   openedAt: number;
   openedBy: string;
+  openedOn?: string; // device it was done on (admins only, see lib/audit.ts)
   billedAt?: number;
   billedBy?: string;
+  billedOn?: string;
   closedAt?: number;
   closedBy?: string;
+  closedOn?: string;
   total?: number;
 };
 
@@ -71,7 +74,7 @@ export type OrderLine = {
   cookingAt?: number;
   readyAt?: number;
   /** every status change on this dish: who did it and when (undo steps included) */
-  log?: { s: OrderStatus; by: string; at: number }[];
+  log?: { s: OrderStatus; by: string; at: number; d?: string }[];
   servedAt?: number;
 };
 export type Order = {
@@ -83,6 +86,7 @@ export type Order = {
   status: OrderStatus; // derived from lines, see orderStatus()
   createdAt: number;
   createdBy: string;
+  createdOn?: string;
 };
 
 export type DB = {
@@ -98,9 +102,30 @@ export type DB = {
   users: User[];
   guests: Guest[];
   orders: Order[];
+  logins?: LoginEvent[]; // local file store only; Postgres keeps them in pv_logins
 };
 
-export type Me = PublicUser & { role: Role };
+export type Me = PublicUser & { role: Role; owner?: boolean };
+
+/** What a phone/PC reports about itself (browsers can't read a computer's real name). */
+export type DeviceInfo = { label?: string; model?: string; os?: string; browser?: string };
+
+export type LoginEvent = {
+  id: string;
+  at: number;
+  ok: boolean; // false = wrong email/password
+  email: string;
+  userId?: string;
+  name?: string;
+  ip?: string;
+  city?: string;
+  region?: string;
+  country?: string;
+  lat?: string;
+  lon?: string;
+  device: DeviceInfo;
+  ua?: string;
+};
 
 export type LiveState = {
   v: number;

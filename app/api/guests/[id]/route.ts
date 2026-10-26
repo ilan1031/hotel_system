@@ -1,10 +1,12 @@
 import { write } from "@/lib/db";
 import { can, handle, HttpError, requireUser } from "@/lib/auth";
+import { currentDevice } from "@/lib/audit";
 import { freeLabel } from "@/lib/guests";
 import { guestLines, guestTotal, isTakeaway, orderStatus, type Permission } from "@/lib/types";
 
 export const PATCH = handle(async (req: Request, ctx: RouteContext<"/api/guests/[id]">) => {
   const me = await requireUser();
+  const on = await currentDevice();
   const { id } = await ctx.params;
   const { action, tableId } = await req.json();
   const need = (p: Permission) => {
@@ -24,6 +26,7 @@ export const PATCH = handle(async (req: Request, ctx: RouteContext<"/api/guests/
         g.status = "bill";
         g.billedAt = Date.now();
         g.billedBy = me.id;
+        g.billedOn = on;
         g.total = guestTotal(id, db.orders);
         break;
       // Payment happens only from a bill.
@@ -33,6 +36,7 @@ export const PATCH = handle(async (req: Request, ctx: RouteContext<"/api/guests/
         g.status = "closed";
         g.closedAt = Date.now();
         g.closedBy = me.id;
+        g.closedOn = on;
         break;
       case "move": {
         need("order.take");
@@ -57,6 +61,7 @@ export const PATCH = handle(async (req: Request, ctx: RouteContext<"/api/guests/
 // Served dishes must be billed instead.
 export const DELETE = handle(async (_req: Request, ctx: RouteContext<"/api/guests/[id]">) => {
   const me = await requireUser("order.take");
+  const on = await currentDevice();
   const { id } = await ctx.params;
   await write((db) => {
     const g = db.guests.find((x) => x.id === id);
@@ -72,6 +77,6 @@ export const DELETE = handle(async (_req: Request, ctx: RouteContext<"/api/guest
       o.lines.forEach((l) => (l.status = "cancelled"));
       o.status = orderStatus(o.lines);
     }
-    Object.assign(g, { status: "closed", left: true, total: 0, closedAt: Date.now(), closedBy: me.id });
+    Object.assign(g, { status: "closed", left: true, total: 0, closedAt: Date.now(), closedBy: me.id, closedOn: on });
   });
 });

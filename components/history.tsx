@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Info } from "lucide-react";
+import { Info, Smartphone } from "lucide-react";
 import { useLive } from "./live";
 import { Modal } from "./ui";
 import type { Guest, Order, OrderStatus } from "@/lib/types";
@@ -45,12 +45,24 @@ function InfoButton({ onClick, light }: { onClick: () => void; light?: boolean }
   );
 }
 
-function Step({ status, who, at, back }: { status: OrderStatus; who: string; at?: number; back?: boolean }) {
+/** Device an action was done on. The server only sends it to the owner and Admin role. */
+function Device({ name }: { name?: string }) {
+  if (!name) return null;
+  return (
+    <span className="ml-1 inline-flex items-center gap-0.5 rounded bg-stone-100 px-1 text-[11px] text-stone-500">
+      <Smartphone className="size-3" />
+      {name}
+    </span>
+  );
+}
+
+function Step({ status, who, at, back, on }: { status: OrderStatus; who: string; at?: number; back?: boolean; on?: string }) {
   return (
     <li className="flex items-center gap-2 py-0.5 text-sm">
       <span className={`size-2 shrink-0 rounded-full ${DOT[status]}`} />
       <span className="min-w-0 flex-1">
         {back ? `↶ Back to ${LABEL[status].toLowerCase()}` : LABEL[status]} · <b>{who}</b>
+        <Device name={on} />
       </span>
       <span className="text-stone-400 tabular-nums">{time(at)}</span>
     </li>
@@ -63,6 +75,7 @@ function OrderSteps({ order: o }: { order: Order }) {
     <div className="rounded-2xl bg-white p-3 ring-1 ring-stone-200">
       <p className="mb-2 text-sm text-stone-500">
         #{o.no} · ordered by <b className="text-ink">{name(o.createdBy)}</b> · {time(o.createdAt)}
+        <Device name={o.createdOn} />
       </p>
       <ul className="space-y-2">
         {o.lines.map((l) => {
@@ -76,7 +89,7 @@ function OrderSteps({ order: o }: { order: Order }) {
                 {(l.log ?? []).map((e, i) => {
                   const back = RANK[e.s] < RANK[prev];
                   prev = e.s;
-                  return <Step key={i} status={e.s} who={name(e.by)} at={e.at} back={back} />;
+                  return <Step key={i} status={e.s} who={name(e.by)} at={e.at} back={back} on={e.d} />;
                 })}
                 {!l.log?.length && <li className="text-sm text-stone-400">Not started yet</li>}
               </ul>
@@ -112,15 +125,18 @@ export function GuestHistory({ guest: g, orders, title }: { guest: Guest; orders
         <ul className="mb-3 space-y-1 text-sm">
           <li>
             Opened by <b>{name(g.openedBy)}</b> · {time(g.openedAt)}
+            <Device name={g.openedOn} />
           </li>
           {g.billedAt && (
             <li>
               Billed by <b>{name(g.billedBy)}</b> · {time(g.billedAt)}
+              <Device name={g.billedOn} />
             </li>
           )}
           {g.closedAt && (
             <li>
               {g.left ? "Removed" : "Paid"} by <b>{name(g.closedBy)}</b> · {time(g.closedAt)}
+              <Device name={g.closedOn} />
             </li>
           )}
         </ul>

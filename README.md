@@ -49,6 +49,8 @@ Every action that can't be undone (cancel a dish, remove a guest, bill, paid, ad
 
 **History (ⓘ):** every kitchen ticket, every ticket in a table, and every bill has an ⓘ in its top-right corner. It shows who ordered, who started, finished, served or cancelled each dish (step-backs included), and who opened, billed and took payment, all with times.
 
+**Devices & login audit:** every phone or PC reports its model (on Android Chrome), OS and browser. Browsers never reveal a computer's real name, so staff can give a device a name (tap ✎ under the login form, e.g. "Kitchen tablet"). Actions in the ⓘ history show which device they were done on, but only to the owner and the Admin role; the server strips device details for everyone else. The owner also gets **Admin → Logins**: every sign-in attempt for a day, failed ones included, with device, IP and approximate location (city, region and country from Vercel's IP lookup, with a map link). Locations only appear on the hosted site, not when running locally.
+
 **Split table:** in a table, the dashed `+` button adds another customer (B, C…). Each customer has their own orders and bill, and the table tile shows one coloured square per customer: A and B on top, C and D below, then E over F in a new column, and so on. A customer alone at the end of a pair stretches to fill the gap.
 
 ## Roles (editable under Admin → Roles)

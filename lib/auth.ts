@@ -2,6 +2,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { readMeta } from "./db";
+import { isOwner } from "./owner";
 import type { Me, Permission } from "./types";
 
 const COOKIE = "pv_session";
@@ -44,7 +45,7 @@ export async function currentUser(): Promise<Me | null> {
   if (!user || !role) return null;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { passwordHash, ...pub } = user;
-  return { ...pub, role };
+  return { ...pub, role, owner: isOwner(user) };
 }
 
 export class HttpError extends Error {

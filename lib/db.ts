@@ -15,5 +15,7 @@ export const readMeta: Store["readMeta"] = () => pick().readMeta();
 export const read: Store["read"] = () => pick().read();
 export const write: Store["write"] = (fn) => pick().write(fn);
 export const readClosed: Store["readClosed"] = (from, to) => pick().readClosed(from, to);
+export const addLogin: Store["addLogin"] = (e) => pick().addLogin(e);
+export const readLogins: Store["readLogins"] = (from, to) => pick().readLogins(from, to);
 
 export const uid = (p = "") => p + randomUUID().slice(0, 8);
