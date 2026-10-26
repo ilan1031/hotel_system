@@ -3,9 +3,14 @@ export function BuiltBy({ className = "" }: { className?: string }) {
   return (
     <p className={`text-center text-xs text-stone-500 ${className}`}>
       Built by{" "}
-      <span className="font-display font-extrabold tracking-wide text-maroon">
+      <a
+        href="https://www.abielan.in"
+        target="_blank"
+        rel="noopener"
+        className="font-display font-extrabold tracking-wide text-maroon underline-offset-2 hover:underline"
+      >
         Abielan <span className="text-gold">Tech</span>
-      </span>
+      </a>
     </p>
   );
 }
