@@ -79,7 +79,8 @@ export function MenuPicker({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 40 }}
           transition={{ type: "spring", stiffness: 380, damping: 36 }}
-          className="bg-kolam fixed inset-0 z-[70] flex flex-col"
+          // solid cream (bg-kolam alone is see-through so the page watermark can show)
+          className="bg-cream bg-kolam fixed inset-0 z-[70] flex flex-col"
         >
           {/* header */}
           <div className="shrink-0 border-b border-gold/30 bg-paper/95 px-3 pt-3 pb-2 backdrop-blur sm:px-5">
