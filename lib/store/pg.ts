@@ -1,18 +1,18 @@
 import "server-only";
 import { Pool, type PoolClient } from "pg";
 import { seed } from "../seed";
-import { SCHEMA_SQL } from "./schema.mjs";
+import { connectionOptions, SCHEMA_SQL } from "./schema.mjs";
 import type { DB, Guest, Order } from "../types";
 import type { Store } from "./types";
 
-// Postgres store (Neon on Vercel). Writes lock the single pv_meta row, so they run one at a time
+// Postgres store (Supabase or Neon on Vercel). Writes lock the single pv_meta row, so they run one at a time
 // across every serverless instance; reads only load live guests and their orders.
 
 const g = globalThis as unknown as { __pvPool?: Pool; __pvReady?: Promise<void> };
 
 function pool() {
   g.__pvPool ??= new Pool({
-    connectionString: process.env.DATABASE_URL,
+    ...connectionOptions(process.env.DATABASE_URL!),
     max: Number(process.env.PG_POOL_MAX ?? 3),
     idleTimeoutMillis: 10_000,
   });
@@ -35,9 +35,23 @@ function ready() {
     }
   })().catch((e) => {
     g.__pvReady = undefined; // retry on the next request
-    throw e;
+    throw explain(e);
   });
   return g.__pvReady;
+}
+
+/** Supabase's "direct connection" host is IPv6-only, which Vercel can't reach; say so plainly. */
+function explain(e: unknown) {
+  const host = new URL(process.env.DATABASE_URL!).hostname;
+  const code = (e as { code?: string }).code ?? "";
+  if (/^db\..+\.supabase\.co$/.test(host) && /ENETUNREACH|EHOSTUNREACH|ENOTFOUND|EAI_AGAIN|ETIMEDOUT/.test(code)) {
+    return new Error(
+      `Can't reach ${host} (${code}). Supabase's direct connection is IPv6-only; set DATABASE_URL to the ` +
+        `"Transaction pooler" string instead (Supabase → Connect → Transaction pooler, port 6543).`,
+      { cause: e },
+    );
+  }
+  return e;
 }
 
 type Q = Pick<PoolClient, "query">;

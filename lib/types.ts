@@ -5,7 +5,7 @@ export const PERMISSIONS = {
   "order.take": "Take orders & seat guests",
   "order.serve": "Mark orders served",
   "order.cancel": "Cancel orders",
-  "kitchen.view": "Kitchen screen (mark ready)",
+  "kitchen.view": "Kitchen screen (start cooking, mark ready)",
   "bill.mark": "Mark table for bill",
   "bill.settle": "Settle bills & free table",
   "admin.tables": "Manage tables",
@@ -51,13 +51,15 @@ export type Guest = {
   openedAt: number;
   openedBy: string;
   billedAt?: number;
+  billedBy?: string;
   closedAt?: number;
   closedBy?: string;
   total?: number;
 };
 
-export type OrderStatus = "waiting" | "ready" | "served" | "cancelled";
-// Each dish on a ticket moves on its own: waiting → ready → served (or cancelled before serving).
+export type OrderStatus = "waiting" | "cooking" | "ready" | "served" | "cancelled";
+// Each dish on a ticket moves on its own: waiting (ordered) → cooking → ready → served,
+// or cancelled any time before it is served.
 export type OrderLine = {
   id: string;
   itemId: string;
@@ -66,7 +68,10 @@ export type OrderLine = {
   qty: number;
   note?: string;
   status: OrderStatus;
+  cookingAt?: number;
   readyAt?: number;
+  /** every status change on this dish: who did it and when (undo steps included) */
+  log?: { s: OrderStatus; by: string; at: number }[];
   servedAt?: number;
 };
 export type Order = {
@@ -108,13 +113,14 @@ export type LiveState = {
 };
 
 // Visual status for a guest at a table (colour only on the floor).
-export type Light = "free" | "seated" | "waiting" | "ready" | "served" | "bill";
+export type Light = "free" | "seated" | "waiting" | "cooking" | "ready" | "served" | "bill";
 
-/** Ticket status from its dishes: any waiting → waiting, else any ready → ready, else served. */
+/** Ticket status from its least-advanced dish: waiting, then cooking, then ready, else served. */
 export function orderStatus(lines: OrderLine[]): OrderStatus {
   const live = lines.filter((l) => l.status !== "cancelled");
   if (!live.length) return "cancelled";
   if (live.some((l) => l.status === "waiting")) return "waiting";
+  if (live.some((l) => l.status === "cooking")) return "cooking";
   if (live.some((l) => l.status === "ready")) return "ready";
   return "served";
 }
@@ -127,6 +133,7 @@ export function guestLight(g: Guest, orders: Order[]): Light {
   const lines = guestLines(g.id, orders);
   if (lines.some((l) => l.status === "ready")) return "ready";
   if (lines.some((l) => l.status === "waiting")) return "waiting";
+  if (lines.some((l) => l.status === "cooking")) return "cooking";
   if (lines.length) return "served";
   return "seated";
 }
@@ -138,7 +145,8 @@ export function guestTotal(guestId: string, orders: Order[]) {
 export const LIGHT_META: Record<Light, { label: string; bg: string; ring: string; dot: string }> = {
   free: { label: "Free", bg: "bg-white", ring: "ring-stone-300", dot: "bg-stone-300" },
   seated: { label: "Seated", bg: "bg-stone-200", ring: "ring-stone-400", dot: "bg-stone-500" },
-  waiting: { label: "Cooking", bg: "bg-amber-400", ring: "ring-amber-500", dot: "bg-amber-400" },
+  waiting: { label: "Ordered", bg: "bg-amber-400", ring: "ring-amber-500", dot: "bg-amber-400" },
+  cooking: { label: "Cooking", bg: "bg-orange-600", ring: "ring-orange-700", dot: "bg-orange-600" },
   ready: { label: "Ready", bg: "bg-emerald-500", ring: "ring-emerald-600", dot: "bg-emerald-500" },
   served: { label: "Served", bg: "bg-sky-500", ring: "ring-sky-600", dot: "bg-sky-500" },
   bill: { label: "Bill", bg: "bg-rose-700", ring: "ring-rose-800", dot: "bg-rose-700" },

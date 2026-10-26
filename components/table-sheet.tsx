@@ -7,6 +7,7 @@ import {
   Check,
   CheckCheck,
   ChefHat,
+  Flame,
   Plus,
   Receipt,
   ShoppingBag,
@@ -19,6 +20,7 @@ import { useLive } from "./live";
 import { useConfirm } from "./confirm";
 import { Btn, Dot, Modal, Sheet } from "./ui";
 import { MenuPicker, type PickTarget } from "./menu-picker";
+import { OrderHistory } from "./history";
 import {
   guestLight,
   guestLines,
@@ -33,7 +35,7 @@ import {
 } from "@/lib/types";
 import { minsSince } from "@/lib/client";
 
-const LINE_LIGHT = { waiting: "waiting", ready: "ready", served: "served", cancelled: "free" } as const;
+const LINE_LIGHT = { waiting: "waiting", cooking: "cooking", ready: "ready", served: "served", cancelled: "free" } as const;
 
 /** Orders for one dine-in table (all its customers) or one takeaway parcel. */
 export function TableSheet({
@@ -298,17 +300,19 @@ function OrderCard({ order: o }: { order: Order }) {
       }`}
     >
       <span className={`absolute inset-y-0 left-0 w-1.5 ${LIGHT_META[light].bg}`} />
-      <div className="flex items-center gap-2 pt-2.5 pr-3 text-xs text-stone-500">
+      <div className="flex items-center gap-2 pt-1.5 pr-1.5 text-xs text-stone-500">
         <Dot light={light} className="size-2.5" />#{o.no} · {minsSince(o.createdAt)}m
+        <span className="ml-auto" />
         {ready.length > 1 && can("order.serve") && (
           <button
             onClick={() => set("served", undefined, "Served")}
-            className="ml-auto flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1 font-bold text-white"
+            className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1 font-bold text-white"
             aria-label="Serve all ready dishes"
           >
             <CheckCheck className="size-4" /> {ready.length}
           </button>
         )}
+        <OrderHistory order={o} />
       </div>
       <ul className="divide-y divide-stone-100 pb-1">
         {o.lines.map((l) => (
@@ -330,7 +334,7 @@ function LineRow({
 }) {
   const { can } = useLive();
   const cancelled = l.status === "cancelled";
-  const canCancel = (l.status === "waiting" || l.status === "ready") && can("order.cancel");
+  const canCancel = ["waiting", "cooking", "ready"].includes(l.status) && can("order.cancel");
 
   return (
     <li className="flex items-center gap-2 py-2 pr-2">
@@ -346,7 +350,12 @@ function LineRow({
         </Btn>
       )}
       {l.status === "waiting" && can("kitchen.view") && (
-        <Btn tone="amber" size="sm" onClick={() => onSet("ready")} aria-label={`${l.name} ready`}>
+        <Btn tone="amber" size="sm" onClick={() => onSet("cooking")} aria-label={`Start cooking ${l.name}`}>
+          <Flame className="size-5" />
+        </Btn>
+      )}
+      {l.status === "cooking" && can("kitchen.view") && (
+        <Btn tone="green" size="sm" onClick={() => onSet("ready")} aria-label={`${l.name} ready`}>
           <ChefHat className="size-5" />
         </Btn>
       )}
