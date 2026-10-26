@@ -4,10 +4,10 @@ import { fileStore } from "./store/file";
 import { pgStore } from "./store/pg";
 import type { Store } from "./store/types";
 
-// DATABASE_URL set → Postgres (Neon on Vercel). Otherwise a local JSON file in ./data.
+// DATABASE_URL set → Postgres (Supabase or Neon on Vercel). Otherwise a local JSON file in ./data.
 function pick(): Store {
   if (process.env.DATABASE_URL) return pgStore;
-  if (process.env.VERCEL) throw new Error("DATABASE_URL is not set. Add your Neon connection string in Vercel → Settings → Environment Variables.");
+  if (process.env.VERCEL) throw new Error("DATABASE_URL is not set. Add your database connection string in Vercel → Settings → Environment Variables.");
   return fileStore;
 }
 

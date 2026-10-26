@@ -7,11 +7,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import pg from "pg";
-import { SCHEMA_SQL } from "../lib/store/schema.mjs";
+import { connectionOptions, SCHEMA_SQL } from "../lib/store/schema.mjs";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
-  console.error("Set DATABASE_URL to your Neon connection string first.");
+  console.error("Set DATABASE_URL to your database connection string first (see .env.example).");
   process.exit(1);
 }
 const force = process.argv.includes("--force");
@@ -22,7 +22,7 @@ if ((db.schema ?? 1) < 2) {
   process.exit(1);
 }
 
-const client = new pg.Client({ connectionString: url });
+const client = new pg.Client(connectionOptions(url));
 await client.connect();
 try {
   await client.query(SCHEMA_SQL);

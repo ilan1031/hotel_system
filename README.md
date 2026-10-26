@@ -59,33 +59,38 @@ The server checks every permission. The UI only hides what a role can't use.
 
 ## Data
 
-- **Live (Vercel):** Postgres on [Neon](https://neon.tech), used whenever `DATABASE_URL` is set.
+- **Live (Vercel):** Postgres on Supabase (or Neon), used whenever `DATABASE_URL` is set.
   - Tables, menu, roles and users live in one row (`pv_meta`). Each customer and each kitchen ticket is its own row (`pv_guests`, `pv_orders`).
   - Screens only load what's live right now, so months of history don't slow anything down.
   - Every change runs in a transaction that locks `pv_meta`. Two phones saving at the same moment can't overwrite each other.
   - Tables and the starting data are created automatically on the first request.
+  - Row level security is on for these tables, so Supabase's public REST API (anon or publishable key) can't read users or password hashes.
 - **Local:** with no `DATABASE_URL`, everything is kept in `data/db.json`. Delete it to reset. Set `DATA_DIR` to put it elsewhere. This mode refuses to run on Vercel.
 
-## Deploy to Vercel + Neon
+## Deploy to Vercel + Supabase
 
-1. **Neon:** create a project (region: Singapore `ap-southeast-1` is closest to India). Open **Connect**, turn on **Connection pooling**, and copy the connection string (the host contains `-pooler`).
-2. **Vercel:** import the repo. Under **Settings → Environment Variables**, add the keys from [.env.example](.env.example):
-   - `DATABASE_URL` – the Neon pooled string
+The app talks to the database directly with a Postgres connection string. It does **not** use Supabase's API keys (publishable, secret, anon or service_role), so don't add those to Vercel.
+
+1. **Supabase:** open your project → **Connect** → **Transaction pooler** (port `6543`, host `…pooler.supabase.com`). Copy the URI and replace `[YOUR-PASSWORD]` with your database password. If you've forgotten it, reset it under **Project Settings → Database**.
+2. **Vercel:** import the GitHub repo. Under **Settings → Environment Variables**, add the keys from [.env.example](.env.example):
+   - `DATABASE_URL` – the Supabase transaction pooler URI
    - `AUTH_SECRET` – a long random string (`openssl rand -hex 32`). Changing it logs everyone out.
    - `APP_UTC_OFFSET_MINUTES` – `330` for India
    - `ADMIN_PASSWORD` – password for the first admin. Only used when the database is empty; skip it if you import your local data.
    - `NEXT_PUBLIC_POLL_MS` – optional; `3000` is a good default
-3. In **Settings → Functions**, set the function region to the same area as Neon (for example `sin1` Singapore). Each database round trip is then a few milliseconds instead of hundreds.
-4. Deploy, open the site and sign in with the default admin. Change the password straight away.
+3. In **Settings → Functions**, set the function region close to your Supabase region (for example `bom1` Mumbai for `ap-south-1`). Each database round trip is then a few milliseconds instead of hundreds.
+4. Deploy, open the site and sign in with the admin. Change the password straight away.
 
-**Bring your current local data across (optional):** put the Neon string in `.env.local` as `DATABASE_URL=…`, then run:
+Neon works the same way: use its **pooled** connection string as `DATABASE_URL`.
+
+**Bring your current local data across (optional):** put the connection string in `.env.local` as `DATABASE_URL=…`, then run:
 
 ```bash
 npm run db:import
 ```
 
-This copies `data/db.json` (tables, menu, users, open orders and past bills) into Neon. It refuses to touch a database that already has data unless you add `-- --force`. Do this before staff start using the live site.
+This copies `data/db.json` (tables, menu, users, open orders and past bills) into the database. It refuses to touch a database that already has data unless you add `-- --force`. Do this before staff start using the live site.
 
-**Costs to watch:** every open screen checks for changes every few seconds, so the database stays awake during service hours and each check is one Vercel function call. Neon's free plan has limited compute hours per month, and Vercel's free Hobby plan is for non-commercial use with a monthly invocation limit. For a working restaurant, plan on Vercel Pro and keep an eye on Neon usage. If you're near a limit, set `NEXT_PUBLIC_POLL_MS=4000`, which cuts the calls by about a third.
+**Costs to watch:** every open screen checks for changes every few seconds, so each check is one Vercel function call and one small database query. Supabase's free plan pauses projects after a week without activity and has usage limits, and Vercel's free Hobby plan is for non-commercial use with a monthly invocation limit. For a working restaurant, plan on Vercel Pro and keep an eye on your database usage. If you're near a limit, set `NEXT_PUBLIC_POLL_MS=4000`, which cuts the calls by about a third.
 
 The seeded menu comes from the printed Periya Veedu menu. Goli soda is listed at MRP, so it's seeded at ₹20; adjust it under Admin → Menu.
