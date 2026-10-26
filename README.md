@@ -71,7 +71,7 @@ The server checks every permission. The UI only hides what a role can't use.
 
 The app talks to the database directly with a Postgres connection string. It does **not** use Supabase's API keys (publishable, secret, anon or service_role), so don't add those to Vercel.
 
-1. **Supabase:** open your project → **Connect** → **Transaction pooler** (port `6543`, host `…pooler.supabase.com`). Copy the URI and replace `[YOUR-PASSWORD]` with your database password. If you've forgotten it, reset it under **Project Settings → Database**.
+1. **Supabase:** open your project → **Connect** → **Transaction pooler** (port `6543`, host `…pooler.supabase.com`). Copy the URI and replace `[YOUR-PASSWORD]` with your database password. If you've forgotten it, reset it under **Project Settings → Database**. Don't use the **Direct connection** (`db.<ref>.supabase.co:5432`). It's IPv6-only, and Vercel can't reach it.
 2. **Vercel:** import the GitHub repo. Under **Settings → Environment Variables**, add the keys from [.env.example](.env.example):
    - `DATABASE_URL` – the Supabase transaction pooler URI
    - `AUTH_SECRET` – a long random string (`openssl rand -hex 32`). Changing it logs everyone out.
@@ -80,6 +80,8 @@ The app talks to the database directly with a Postgres connection string. It doe
    - `NEXT_PUBLIC_POLL_MS` – optional; `3000` is a good default
 3. In **Settings → Functions**, set the function region close to your Supabase region (for example `bom1` Mumbai for `ap-south-1`). Each database round trip is then a few milliseconds instead of hundreds.
 4. Deploy, open the site and sign in with the admin. Change the password straight away.
+
+**Branches:** `main` is production and `uat` is for testing. Vercel builds every branch other than `main` as a **Preview** deployment, so give the `uat` environment variables the **Preview** scope (you can limit them to the `uat` branch). Point `uat` at a separate Supabase project if you don't want testing to touch real orders.
 
 Neon works the same way: use its **pooled** connection string as `DATABASE_URL`.
 

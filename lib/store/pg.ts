@@ -35,9 +35,23 @@ function ready() {
     }
   })().catch((e) => {
     g.__pvReady = undefined; // retry on the next request
-    throw e;
+    throw explain(e);
   });
   return g.__pvReady;
+}
+
+/** Supabase's "direct connection" host is IPv6-only, which Vercel can't reach; say so plainly. */
+function explain(e: unknown) {
+  const host = new URL(process.env.DATABASE_URL!).hostname;
+  const code = (e as { code?: string }).code ?? "";
+  if (/^db\..+\.supabase\.co$/.test(host) && /ENETUNREACH|EHOSTUNREACH|ENOTFOUND|EAI_AGAIN|ETIMEDOUT/.test(code)) {
+    return new Error(
+      `Can't reach ${host} (${code}). Supabase's direct connection is IPv6-only; set DATABASE_URL to the ` +
+        `"Transaction pooler" string instead (Supabase → Connect → Transaction pooler, port 6543).`,
+      { cause: e },
+    );
+  }
+  return e;
 }
 
 type Q = Pick<PoolClient, "query">;
