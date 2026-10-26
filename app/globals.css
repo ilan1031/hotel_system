@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-cream: #faf4e6;
+  --color-paper: #fffaf0;
+  --color-maroon: #7a1616;
+  --color-maroon-dark: #561010;
+  --color-gold: #c9a24a;
+  --color-gold-light: #ecd9a4;
+  --color-ink: #2b1d14;
+  --font-sans: var(--font-hind), system-ui, sans-serif;
+  --font-display: var(--font-display), Georgia, serif;
+}
+
+/* cream lives on <html> only, so the logo layer can sit between it and the page content */
+html {
+  background: var(--color-cream);
+}
+html,
+body {
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* subtle kolam-like dotted texture */
+/* transparent so the faint logo layer (body > .bg-logo) shows through; body supplies the cream */
+.bg-kolam {
+  background-image: radial-gradient(rgba(122, 22, 22, 0.08) 1px, transparent 1.2px);
+  background-size: 18px 18px;
+}
+
+/* Periya Veedu logo as a faint watermark behind every screen */
+.bg-logo {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("/logo.jpg") center / min(78vmin, 640px) no-repeat;
+  opacity: 0.07;
+  mix-blend-mode: multiply; /* drops the logo's white box against the cream page */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.65); }
+  70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+.pulse-ready {
+  animation: pulse-ring 1.6s ease-out infinite;
+}
+
+@media print {
+  body * { visibility: hidden !important; }
+  .print-area, .print-area * { visibility: visible !important; }
+  .print-area { position: absolute; inset: 0 auto auto 0; width: 80mm; padding: 4mm; background: white; }
+  .no-print { display: none !important; }
+}
+
+/* lining figures so table numbers line up (T1, T10) */
+.font-display {
+  font-variant-numeric: lining-nums;
+}
